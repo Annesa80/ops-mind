@@ -5,7 +5,7 @@ model = OllamaLLM(
 )
 
 
-def ask_llm(context, query):
+def ask_llm(context, question):
 
     prompt = f"""
     You are OpsMind, a DevOps assistant.
@@ -17,7 +17,7 @@ def ask_llm(context, query):
     {context}
 
     Question:
-    {query}
+    {question}
 
     Answer:
     """

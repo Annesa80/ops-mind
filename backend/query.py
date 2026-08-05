@@ -1,10 +1,27 @@
-from retriever import retriever
+from backend.retriever import retriever
+from backend.llm import ask_llm
 
-query = "Why is my Kubernetes pod stuck in CrashLoopBackOff?"
 
-docs = retriever.invoke(query)
+def ask_opsmind(question: str):
 
-for doc in docs:
-    print("SOURCE:", doc.metadata)
-    print(doc.page_content)
-    print("-"*50)
+    docs = retriever.invoke(question)
+
+    context = "\n\n".join(
+        f"Source: {doc.metadata['source']}\n{doc.page_content}"
+        for doc in docs
+    )
+
+    answer = ask_llm(
+        context=context,
+        question=question
+    )
+
+    sources = list({
+        doc.metadata["source"]
+        for doc in docs
+    })
+
+    return {
+        "answer": answer,
+        "sources": sources
+    }

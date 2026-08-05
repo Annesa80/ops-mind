@@ -1,4 +1,4 @@
-from vectorstore import vectorstore
+from backend.vectorstore import vectorstore
 
 
 retriever = vectorstore.as_retriever(
