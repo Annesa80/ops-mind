@@ -1,3 +1,7 @@
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+
 function AnswerBox({ answer }) {
 
     if (!answer) return null;
@@ -9,8 +13,16 @@ function AnswerBox({ answer }) {
                 Answer
             </h2>
 
-            <div className="bg-gray-100 rounded-lg p-5 whitespace-pre-wrap">
-                {answer}
+            <div className="
+                bg-gray-100 
+                rounded-lg 
+                p-5
+                prose
+                max-w-none
+            ">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {answer}
+                </ReactMarkdown>
             </div>
 
         </div>
