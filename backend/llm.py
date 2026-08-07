@@ -6,13 +6,16 @@ model = OllamaLLM(
 )
 
 
-def create_prompt(context, question):
+def create_prompt(context, question, history=""):
 
     return f"""
     You are OpsMind, a DevOps assistant.
 
     Answer using only the provided context.
     Always mention the source file.
+
+    Conversation history:
+    {history}
 
     Context:
     {context}
@@ -34,13 +37,30 @@ def ask_llm(context, question):
     return model.invoke(prompt)
 
 
+def ask_llm_stream(context, messages):
 
-def ask_llm_stream(context, question):
+    history = "\n".join(
+        f"{m.role}: {m.content}"
+        if hasattr(m, "role")
+        else f"{m['role']}: {m['content']}"
+        for m in messages[:-1]
+    )
+
+
+    last_message = messages[-1]
+
+    if hasattr(last_message, "content"):
+        question = last_message.content
+    else:
+        question = last_message["content"]
+
 
     prompt = create_prompt(
         context,
-        question
+        question,
+        history
     )
+
 
     for chunk in model.stream(prompt):
         yield chunk

@@ -27,17 +27,37 @@ def ask_opsmind(question: str):
         "sources": sources
     }
 
-def ask_opsmind_stream(question):
+def ask_opsmind_stream(messages):
 
-    docs = retriever.invoke(question)
+    latest_question = messages[-1].content
+
+
+    history = "\n".join(
+        f"{m.role}: {m.content}"
+        for m in messages
+    )
+
+
+    search_query = f"""
+    Conversation:
+    {history}
+
+    Current question:
+    {latest_question}
+    """
+
+
+    docs = retriever.invoke(search_query)
+
 
     context = "\n\n".join(
         f"Source: {doc.metadata['source']}\n{doc.page_content}"
         for doc in docs
     )
 
+
     for chunk in ask_llm_stream(
         context,
-        question
+        messages
     ):
         yield chunk

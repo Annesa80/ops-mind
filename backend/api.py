@@ -18,8 +18,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+class Message(BaseModel):
+    role: str
+    content: str
+
+
 class Question(BaseModel):
-    question: str
+    messages: list[Message]
 
 
 @app.get("/")
@@ -38,6 +43,6 @@ def home():
 def chat(request: Question):
 
     return StreamingResponse(
-        ask_opsmind_stream(request.question),
+        ask_opsmind_stream(request.messages),
         media_type="text/event-stream"
     )

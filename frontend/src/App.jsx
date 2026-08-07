@@ -13,7 +13,15 @@ function App() {
     setLoading(true);
 
 
-    // add user message
+    const history = [
+      ...messages,
+      {
+        role: "user",
+        content: question
+      }
+    ];
+
+
     setMessages(prev => [
       ...prev,
       {
@@ -30,25 +38,28 @@ function App() {
     try {
 
       await askOpsMind(
-        question,
+        [
+          ...history
+        ],
         (chunk) => {
 
           setMessages(prev => {
 
-          const updated = [...prev];
+            const updated = [...prev];
 
-          const lastIndex = updated.length - 1;
-
-
-          updated[lastIndex] = {
-            ...updated[lastIndex],
-            content: updated[lastIndex].content + chunk
-          };
+            const lastIndex = updated.length - 1;
 
 
-          return updated;
+            updated[lastIndex] = {
+              ...updated[lastIndex],
+              content:
+                updated[lastIndex].content + chunk
+            };
 
-        });
+
+            return updated;
+
+          });
 
         }
       );
