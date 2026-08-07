@@ -1,12 +1,29 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { askOpsMind } from "./api/opsmind";
 
 import ChatInput from "./components/ChatInput";
 import ChatWindow from "./components/ChatWindow";
 
 function App() {
-  const [messages, setMessages] = useState([]);
+
+  const [messages, setMessages] = useState(() => {
+    const saved = localStorage.getItem("opsmind-history");
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "opsmind-history",
+      JSON.stringify(messages)
+    );
+  }, [messages]);
+
+  function newChat() {
+    setMessages([]);
+    localStorage.removeItem("opsmind-history");
+  }
 
   async function handleAsk(question) {
 
@@ -100,6 +117,13 @@ function App() {
             DevOps AI Assistant
           </p>
         </div>
+
+        <button
+          onClick={newChat}
+          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg"
+        >
+          New Chat
+        </button>
 
         <ChatWindow messages={messages} />
 
