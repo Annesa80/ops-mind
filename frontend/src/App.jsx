@@ -3,6 +3,7 @@ import { askOpsMind } from "./api/opsmind";
 
 import ChatInput from "./components/ChatInput";
 import ChatWindow from "./components/ChatWindow";
+import FileUpload from "./components/FileUpload";
 
 function App() {
 
@@ -20,15 +21,16 @@ function App() {
     );
   }, [messages]);
 
+
   function newChat() {
     setMessages([]);
     localStorage.removeItem("opsmind-history");
   }
 
+
   async function handleAsk(question) {
 
     setLoading(true);
-
 
     const history = [
       ...messages,
@@ -55,9 +57,7 @@ function App() {
     try {
 
       await askOpsMind(
-        [
-          ...history
-        ],
+        history,
         (chunk) => {
 
           setMessages(prev => {
@@ -66,13 +66,11 @@ function App() {
 
             const lastIndex = updated.length - 1;
 
-
             updated[lastIndex] = {
               ...updated[lastIndex],
               content:
                 updated[lastIndex].content + chunk
             };
-
 
             return updated;
 
@@ -81,19 +79,22 @@ function App() {
         }
       );
 
-
-    } catch(err) {
+    } catch (err) {
 
       console.error(err);
-
 
       setMessages(prev => {
 
         const updated = [...prev];
 
-        updated[updated.length - 1].content =
-          "Something went wrong.";
+        if (updated.length > 0) {
 
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            content: "Something went wrong. Please try again."
+          };
+
+        }
 
         return updated;
 
@@ -101,42 +102,220 @@ function App() {
 
     }
 
-
     setLoading(false);
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 flex justify-center py-10">
-      <div className="w-full max-w-4xl bg-white rounded-xl shadow-lg p-8 flex flex-col gap-6">
-        <div>
-          <h1 className="text-4xl font-bold text-center">
-            🤖 OpsMind
-          </h1>
 
-          <p className="text-center text-gray-500 mt-2">
-            DevOps AI Assistant
-          </p>
-        </div>
+    <div className="min-h-screen bg-slate-100 flex flex-col">
 
-        <button
-          onClick={newChat}
-          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg"
-        >
-          New Chat
-        </button>
+      {/* Main white application window */}
 
-        <ChatWindow messages={messages} />
+      <main
+        className="
+          w-full
+          max-w-5xl
+          mx-auto
+          flex-1
+          bg-white
+          border-x
+          border-slate-200
+          shadow-sm
+        "
+      >
 
-        {loading && (
-          <p className="text-gray-500">
-            🤖 Thinking...
-          </p>
-        )}
+        {/* Header */}
 
-        <ChatInput onAsk={handleAsk} />
-      </div>
+        <header className="px-6 pt-10 pb-6">
+
+          <div className="flex items-center justify-between">
+
+            {/* Branding */}
+
+            <div className="flex items-center gap-3">
+
+              <div
+                className="
+                  w-11
+                  h-11
+                  rounded-xl
+                  bg-blue-600
+                  flex
+                  items-center
+                  justify-center
+                  text-2xl
+                  shadow-sm
+                "
+              >
+                🤖
+              </div>
+
+              <div>
+
+                <h1 className="text-3xl font-bold text-slate-900">
+                  OpsMind
+                </h1>
+
+                <p className="text-sm text-slate-500">
+                  DevOps AI Assistant
+                </p>
+
+              </div>
+
+            </div>
+
+
+            {/* Actions */}
+
+            <div className="flex items-center gap-2">
+
+              <FileUpload />
+
+              <button
+                onClick={newChat}
+                className="
+                  px-4
+                  py-2
+                  rounded-lg
+                  border
+                  border-slate-300
+                  bg-white
+                  text-slate-700
+                  text-sm
+                  font-medium
+                  hover:bg-slate-50
+                  transition
+                "
+              >
+                + New Chat
+              </button>
+
+            </div>
+
+          </div>
+
+        </header>
+
+
+        {/* Divider */}
+
+        <div className="border-t border-slate-200" />
+
+
+        {/* Chat */}
+
+        <section className="px-6 py-8">
+
+          {messages.length === 0 ? (
+
+            <div className="min-h-[55vh] flex flex-col items-center justify-center text-center">
+
+              <div className="text-5xl mb-5">
+                🤖
+              </div>
+
+              <h2 className="text-2xl font-semibold text-slate-800">
+                How can I help with your DevOps problem?
+              </h2>
+
+              <p className="mt-2 max-w-lg text-slate-500">
+                Ask about Docker, Kubernetes, Linux, Redis,
+                Nginx, or upload your own knowledge files.
+              </p>
+
+              <div className="mt-6 flex flex-wrap justify-center gap-2">
+
+                {[
+                  "Why is my Kubernetes pod crashing?",
+                  "How do I fix Redis MISCONF?",
+                  "How do I troubleshoot Nginx 502?"
+                ].map((suggestion) => (
+
+                  <button
+                    key={suggestion}
+                    onClick={() => handleAsk(suggestion)}
+                    className="
+                      px-4
+                      py-2
+                      rounded-full
+                      border
+                      border-slate-200
+                      bg-slate-50
+                      text-sm
+                      text-slate-600
+                      hover:border-blue-300
+                      hover:bg-blue-50
+                      hover:text-blue-600
+                      transition
+                    "
+                  >
+                    {suggestion}
+                  </button>
+
+                ))}
+
+              </div>
+
+            </div>
+
+          ) : (
+
+            <ChatWindow messages={messages} />
+
+          )}
+
+
+          {/* Thinking indicator */}
+
+          {loading && (
+
+            <div className="flex items-center gap-2 mt-6 text-sm text-slate-500">
+
+              <div className="flex gap-1">
+
+                <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" />
+                <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:150ms]" />
+                <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:300ms]" />
+
+              </div>
+
+              OpsMind is thinking...
+
+            </div>
+
+          )}
+
+        </section>
+
+
+        {/* Input */}
+
+        <section className="px-6 pb-8">
+
+          <ChatInput
+            onAsk={handleAsk}
+          />
+
+        </section>
+
+      </main>
+
+
+      {/* Footer */}
+
+      <footer className="py-5 text-center">
+
+        <p className="text-sm text-slate-400">
+          © 2026 OpsMind · DevOps AI Assistant
+        </p>
+
+      </footer>
+
     </div>
+
   );
+
 }
+
 
 export default App;
