@@ -31,6 +31,28 @@ def ask_opsmind(question: str):
 
     )
 
+    print()
+    print("=" * 70)
+    print("QUESTION")
+    print("=" * 70)
+    print(question)
+
+    print()
+    print("=" * 70)
+    print("FINAL RERANKED CONTEXT")
+    print("=" * 70)
+    print(context)
+
+    print()
+    print("=" * 70)
+    print("SOURCES")
+    print("=" * 70)
+
+    for document in reranked_documents:
+        print(
+            document["metadata"]["source"],
+            document.get("rerank_score")
+        )
 
     answer = ask_llm(
         context=context,

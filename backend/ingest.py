@@ -8,7 +8,10 @@ from langchain_community.document_loaders import (
     Docx2txtLoader,
 )
 
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_text_splitters import (
+    MarkdownHeaderTextSplitter,
+    RecursiveCharacterTextSplitter,
+)
 
 from sentence_transformers import SentenceTransformer
 
@@ -67,62 +70,115 @@ def add_documents(documents):
 
     create_collection()
 
+    markdown_splitter = MarkdownHeaderTextSplitter(
+        headers_to_split_on=[
+            ("#", "h1"),
+            ("##", "h2"),
+            ("###", "h3"),
+        ],
+        strip_headers=False
+    )
 
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
+    recursive_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=700,
         chunk_overlap=100
     )
 
+    chunks = []
 
-    chunks = splitter.split_documents(
-        documents
-    )
+    for document in documents:
 
+        source = clean_filename(
+            document.metadata.get(
+                "source",
+                "unknown"
+            )
+        )
+
+        markdown_chunks = markdown_splitter.split_text(
+            document.page_content
+        )
+
+        for chunk in markdown_chunks:
+
+            chunk.metadata["source"] = source
+
+            if len(chunk.page_content) > 700:
+
+                smaller_chunks = recursive_splitter.split_documents(
+                    [chunk]
+                )
+
+                chunks.extend(
+                    smaller_chunks
+                )
+
+            else:
+
+                chunks.append(
+                    chunk
+                )
 
     texts = [
         chunk.page_content
         for chunk in chunks
     ]
 
-
     embeddings = embedding_model.encode(
         texts
     )
 
-
     points = []
 
-
-    for chunk, vector in zip(chunks, embeddings):
+    for chunk, vector in zip(
+        chunks,
+        embeddings
+    ):
 
         points.append(
 
             PointStruct(
 
-                # IMPORTANT
-                # do not use i here
                 id=str(uuid.uuid4()),
 
                 vector=vector.tolist(),
 
                 payload={
+
                     "text": chunk.page_content,
 
                     "metadata": {
+
                         "source": clean_filename(
-                            chunk.metadata.get("source", "unknown")
+                            chunk.metadata.get(
+                                "source",
+                                "unknown"
+                            )
+                        ),
+
+                        "h1": chunk.metadata.get(
+                            "h1",
+                            ""
+                        ),
+
+                        "h2": chunk.metadata.get(
+                            "h2",
+                            ""
+                        ),
+
+                        "h3": chunk.metadata.get(
+                            "h3",
+                            ""
                         )
                     }
                 }
             )
         )
 
-
     client.upsert(
         collection_name=COLLECTION_NAME,
         points=points
     )
-
 
     return len(points)
 

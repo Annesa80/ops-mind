@@ -141,9 +141,9 @@ def hybrid_search(
     # k=10, so dense_k is applied here too.
     # ----------------------------------------
 
-    dense_results = dense_results[
-        :dense_k
-    ]
+    # dense_results = dense_results[
+    #     :dense_k
+    # ]
 
 
     # ----------------------------------------
