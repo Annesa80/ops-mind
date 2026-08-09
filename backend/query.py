@@ -31,28 +31,6 @@ def ask_opsmind(question: str):
 
     )
 
-    print()
-    print("=" * 70)
-    print("QUESTION")
-    print("=" * 70)
-    print(question)
-
-    print()
-    print("=" * 70)
-    print("FINAL RERANKED CONTEXT")
-    print("=" * 70)
-    print(context)
-
-    print()
-    print("=" * 70)
-    print("SOURCES")
-    print("=" * 70)
-
-    for document in reranked_documents:
-        print(
-            document["metadata"]["source"],
-            document.get("rerank_score")
-        )
 
     answer = ask_llm(
         context=context,
@@ -72,7 +50,6 @@ def ask_opsmind(question: str):
     return {
 
         "answer": answer,
-
         "sources": sources
 
     }
@@ -86,19 +63,18 @@ def ask_opsmind_stream(messages):
     history = "\n".join(
 
         f"{m.role}: {m.content}"
-
         for m in messages
 
     )
 
 
     search_query = f"""
-Conversation:
-{history}
+        Conversation:
+        {history}
 
-Current question:
-{latest_question}
-"""
+        Current question:
+        {latest_question}
+        """
 
 
     documents = hybrid_search(
