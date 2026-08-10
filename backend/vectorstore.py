@@ -1,6 +1,10 @@
 from qdrant_client import QdrantClient
+
 from langchain_qdrant import QdrantVectorStore
 from langchain_huggingface import HuggingFaceEmbeddings
+
+
+COLLECTION_NAME = "opsmind"
 
 
 client = QdrantClient(
@@ -9,7 +13,7 @@ client = QdrantClient(
 )
 
 
-# Check collection exists first
+# Check collection exists
 collections = client.get_collections()
 
 names = [
@@ -17,22 +21,21 @@ names = [
     for c in collections.collections
 ]
 
-if "opsmind" not in names:
+
+if COLLECTION_NAME not in names:
     raise Exception(
         "Vector database missing. Run ingestion first."
     )
 
 
-# Load embedding model
 embedding = HuggingFaceEmbeddings(
     model_name="sentence-transformers/all-MiniLM-L6-v2"
 )
 
 
-# Connect LangChain to existing Qdrant collection
 vectorstore = QdrantVectorStore(
     client=client,
-    collection_name="opsmind",
+    collection_name=COLLECTION_NAME,
     embedding=embedding,
     content_payload_key="text",
     metadata_payload_key="metadata",

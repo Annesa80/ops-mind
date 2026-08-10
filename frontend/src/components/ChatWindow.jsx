@@ -1,17 +1,24 @@
 import MessageBubble from "./MessageBubble";
 
 function ChatWindow({ messages }) {
+
   return (
-    <div className="flex flex-col gap-4">
+
+    <div className="flex flex-col gap-6">
+
       {messages.map((message, index) => (
+
         <MessageBubble
           key={index}
           role={message.role}
           content={message.content}
           sources={message.sources}
         />
+
       ))}
+
     </div>
+
   );
 }
 
