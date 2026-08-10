@@ -10,3 +10,4 @@ qdrant-client
 langchain_qdrant
 langchain_huggingface
 langchain-ollama
+tavily-python

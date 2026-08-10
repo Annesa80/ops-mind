@@ -279,6 +279,7 @@ TEST_CASES = [
 # HELPERS
 # ============================================================
 
+# for Dense results (type: Document)
 def get_source(result):
 
     if hasattr(result, "metadata"):
@@ -292,7 +293,7 @@ def get_source(result):
         ""
     )
 
-
+# for RRF/BGE results (type: dictionary)
 def get_text(result):
 
     if hasattr(result, "page_content"):
@@ -335,7 +336,7 @@ def recall_at_k(
 
     return 0
 
-
+# measures how high the correct result appears
 def reciprocal_rank(rank):
 
     if rank is None:
@@ -343,7 +344,7 @@ def reciprocal_rank(rank):
 
     return 1 / rank
 
-
+# calculate the percentage for ranking for all the questions
 def average(values):
 
     if not values:
