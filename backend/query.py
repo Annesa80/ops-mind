@@ -5,9 +5,13 @@ from backend.llm import (
     ask_llm,
     ask_llm_stream,
     kb_can_answer,
-    run_official_tool,
-    ask_official_docs
+    ask_web_llm,
+    ask_web_llm_stream,
+    web_can_answer,
+    extract_web_sources
 )
+
+from backend.tools.web_search import web_search
 
 
 # ============================================================
@@ -16,9 +20,9 @@ from backend.llm import (
 
 def ask_opsmind(question: str):
 
-    # ============================================================
+    # ========================================================
     # STEP 1 — SEARCH OPSMIND KNOWLEDGE BASE
-    # ============================================================
+    # ========================================================
 
     documents = hybrid_search(
         question,
@@ -27,35 +31,45 @@ def ask_opsmind(question: str):
         final_k=10
     )
 
+    # ========================================================
+    # STEP 2 — RERANK
+    # ========================================================
+
     reranked_documents = rerank_documents(
         question,
         documents,
         top_k=5
     )
 
-    context = "\n\n".join(
+    # ========================================================
+    # STEP 3 — BUILD KB CONTEXT
+    # ========================================================
 
+    context = "\n\n".join(
         f"Source: {document['metadata']['source']}\n"
         f"{document['text']}"
-
         for document in reranked_documents
-
     )
 
-    # ============================================================
-    # STEP 2 — ASK OPSMIND KNOWLEDGE BASE
-    # ============================================================
+    # ========================================================
+    # STEP 4 — CHECK KB
+    # ========================================================
 
-    answer = ask_llm(
+    can_answer = kb_can_answer(
         context=context,
         question=question
     )
 
-    # ============================================================
-    # STEP 3 — KB CAN ANSWER
-    # ============================================================
+    # ========================================================
+    # STEP 5 — ANSWER FROM KB
+    # ========================================================
 
-    if answer.strip() != "KB_INSUFFICIENT":
+    if can_answer:
+
+        answer = ask_llm(
+            context=context,
+            question=question
+        )
 
         sources = list({
             document["metadata"]["source"]
@@ -67,63 +81,55 @@ def ask_opsmind(question: str):
             "sources": sources
         }
 
-    # ============================================================
-    # STEP 4 — KB CANNOT ANSWER
-    # TRY OFFICIAL DOCUMENTATION
-    # ============================================================
+    # ========================================================
+    # STEP 6 — KB INSUFFICIENT → WEB SEARCH
+    # ========================================================
 
-    official_result = run_official_tool(question)
+    web_result = web_search.invoke({
+        "query": question
+    })
 
-    # ============================================================
-    # STEP 5 — NO OFFICIAL DOCUMENTATION TOOL
-    # ============================================================
-
-    if not official_result:
-
+    if not web_result:
         return {
             "answer": (
                 "I don't know. "
                 "I couldn't find enough information in the "
-                "OpsMind knowledge base or the available "
-                "official documentation."
+                "OpsMind knowledge base or the web."
             ),
             "sources": []
         }
 
-    # ============================================================
-    # STEP 6 — ASK LLM USING ONLY OFFICIAL DOCUMENTATION
-    # ============================================================
+    # CHECK WEB EVIDENCE
 
-    official_answer = ask_official_docs(
-        question=question,
-        context=official_result
+    can_answer_web = web_can_answer(
+        context=web_result,
+        question=question
     )
 
-    # ============================================================
-    # STEP 7 — OFFICIAL DOCUMENTATION IS ALSO INSUFFICIENT
-    # ============================================================
-
-    if official_answer.strip() == "OFFICIAL_DOCS_INSUFFICIENT":
-
+    if not can_answer_web:
         return {
             "answer": (
                 "I don't know. "
                 "I couldn't find enough information in the "
-                "OpsMind knowledge base or the available "
-                "official documentation."
+                "OpsMind knowledge base or the web."
             ),
             "sources": []
         }
 
-    # ============================================================
-    # STEP 8 — RETURN OFFICIAL DOCUMENTATION ANSWER
-    # ============================================================
+    # ANSWER FROM WEB
+
+    answer = ask_web_llm(
+        context=web_result,
+        question=question
+    )
+
+    sources = extract_web_sources(
+        web_result
+    )
 
     return {
-        "answer": official_answer,
-        "sources": [
-            "official_kubernetes_documentation"
-        ]
+        "answer": answer,
+        "sources": sources
     }
 
 
@@ -140,11 +146,8 @@ def ask_opsmind_stream(messages):
     # ========================================================
 
     history = "\n".join(
-
         f"{m.role}: {m.content}"
-
         for m in messages
-
     )
 
     # ========================================================
@@ -152,14 +155,14 @@ def ask_opsmind_stream(messages):
     # ========================================================
 
     search_query = f"""
-        Conversation:
+Conversation:
 
-        {history}
+{history}
 
-        Current question:
+Current question:
 
-        {latest_question}
-        """
+{latest_question}
+"""
 
     # ========================================================
     # LOCAL KB
@@ -183,16 +186,13 @@ def ask_opsmind_stream(messages):
     )
 
     # ========================================================
-    # CONTEXT
+    # BUILD CONTEXT
     # ========================================================
 
     context = "\n\n".join(
-
         f"Source: {document['metadata']['source']}\n"
         f"{document['text']}"
-
         for document in reranked_documents
-
     )
 
     # ========================================================
@@ -214,31 +214,38 @@ def ask_opsmind_stream(messages):
             context,
             messages
         ):
-
             yield chunk
 
         return
 
     # ========================================================
-    # OFFICIAL DOCUMENTATION FALLBACK
+    # KB INSUFFICIENT → WEB SEARCH
     # ========================================================
 
-    official_answer = ask_official_docs(
-        latest_question
-    )
+    web_result = web_search.invoke({
+        "query": latest_question
+    })
 
-    if official_answer:
+    # ========================================================
+    # NO WEB RESULTS
+    # ========================================================
 
-        yield official_answer
+    if not web_result:
+
+        yield (
+            "I don't know. "
+            "I couldn't find enough information in the "
+            "OpsMind knowledge base or the web."
+        )
 
         return
 
     # ========================================================
-    # NOTHING FOUND
+    # ANSWER FROM WEB
     # ========================================================
 
-    yield (
-        "I don't have enough information in the "
-        "OpsMind knowledge base or the official "
-        "documentation to answer this question."
-    )
+    for chunk in ask_web_llm_stream(
+        web_result,
+        messages
+    ):
+        yield chunk

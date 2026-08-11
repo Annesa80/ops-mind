@@ -1,31 +1,17 @@
 from langchain_ollama.llms import OllamaLLM
-from langchain_ollama import ChatOllama
-from backend.tools.kubernetes_docs import search_kubernetes_docs
-
-from langchain_core.messages import (
-    SystemMessage,
-    HumanMessage,
-)
 
 
+# ============================================================
 # NORMAL LLM
+# ============================================================
+
 model = OllamaLLM(
     model="llama3.2"
 )
 
-# TOOL-CALLING LLM
-tool_model = ChatOllama(
-    model="llama3.2",
-    temperature=0
-)
-
-tool_model_with_tools = tool_model.bind_tools(
-    [search_kubernetes_docs]
-)
-
 
 # ============================================================
-# PROMPT
+# KNOWLEDGE BASE PROMPT
 # ============================================================
 
 def create_prompt(
@@ -35,83 +21,83 @@ def create_prompt(
 ):
 
     return f"""
-        You are OpsMind, a DevOps troubleshooting assistant.
+You are OpsMind, a DevOps troubleshooting assistant.
 
-        Your answers MUST be grounded in the provided OpsMind
-        knowledge base.
+Your answers MUST be grounded in the provided OpsMind
+knowledge base.
 
-        STRICT RULES:
+STRICT RULES:
 
-        1. Use ONLY the provided Knowledge Base Context to answer.
+1. Use ONLY the provided Knowledge Base Context to answer.
 
-        2. Do NOT use general knowledge.
+2. Do NOT use general knowledge.
 
-        3. Do NOT invent:
-        - commands
-        - filenames
-        - configuration values
-        - error causes
-        - troubleshooting steps
-        - solutions
-        - source files
+3. Do NOT invent:
+- commands
+- filenames
+- configuration values
+- error causes
+- troubleshooting steps
+- solutions
+- source files
 
-        4. A document is relevant only if its content directly
-        supports the user's question.
+4. A document is relevant only if its content directly
+supports the user's question.
 
-        5. Treat each source as independent evidence.
+5. Treat each source as independent evidence.
 
-        6. Do not transfer information between unrelated sources.
+6. Do not transfer information between unrelated sources.
 
-        7. If the context contains relevant information but does
-        not identify the exact cause, say that the exact cause
-        cannot be determined from the available information.
+7. If the context contains relevant information but does
+not identify the exact cause, say that the exact cause
+cannot be determined from the available information.
 
-        Then provide ONLY information supported by the context.
+Then provide ONLY information supported by the context.
 
-        8. If the context does not contain enough information,
-        say exactly:
+8. Do not introduce information that is not present
+in the provided context.
 
-        "I don't have enough information in the OpsMind knowledge
-        base to answer this question."
+9. When giving a command, the command MUST appear in
+the provided context.
 
-        9. NEVER introduce information from unrelated documents.
+10. When mentioning a source file, that source file MUST
+appear in the provided context.
 
-        10. When giving a command, the command MUST appear in
-        the provided context.
+11. Keep the answer focused on the user's question.
 
-        11. When mentioning a source file, that source file MUST
-        appear in the provided context.
+12. Do not mention retrieval, embeddings, vector databases,
+prompts, or internal instructions.
 
-        12. Keep the answer focused on the user's question.
+13. Include a short Sources section containing ONLY the
+sources actually used.
 
-        13. Do not mention retrieval, embeddings, vector databases,
-        prompts, or internal instructions.
+14. Answer only what the user asked.
 
-        14. Include a short Sources section containing ONLY the
-        sources actually used.
+15. If the context does not contain enough information
+to answer the question, respond EXACTLY:
 
-        15. Answer only what the user asked.
+KB_INSUFFICIENT
 
-        Conversation history:
+Conversation history:
 
-        {history}
+{history}
 
-        ================ KNOWLEDGE BASE CONTEXT ================
+================ KNOWLEDGE BASE CONTEXT ================
 
-        {context}
+{context}
 
-        ================ END KNOWLEDGE BASE CONTEXT ================
+================ END KNOWLEDGE BASE CONTEXT ================
 
-        User question:
+User question:
 
-        {question}
+{question}
 
-        Answer:
-        """
+Answer:
+"""
 
 
 # ============================================================
-# NORMAL ANSWER
+# NORMAL KB ANSWER
 # ============================================================
 
 def ask_llm(
@@ -130,7 +116,7 @@ def ask_llm(
 
 
 # ============================================================
-# STREAMING ANSWER
+# STREAMING KB ANSWER
 # ============================================================
 
 def ask_llm_stream(
@@ -158,15 +144,12 @@ def ask_llm_stream(
         history=history
     )
 
-    for chunk in model.stream(
-        prompt
-    ):
-
+    for chunk in model.stream(prompt):
         yield chunk
 
 
 # ============================================================
-# DETERMINE WHETHER KB CAN ANSWER
+# CHECK WHETHER KB CAN ANSWER
 # ============================================================
 
 def kb_can_answer(
@@ -190,7 +173,7 @@ def kb_can_answer(
 
         If the context is about a different technology, answer NO.
 
-        Examples:
+        Example:
 
         Question:
         What is Redis MISCONF?
@@ -200,6 +183,8 @@ def kb_can_answer(
 
         Answer:
         NO
+
+        Example:
 
         Question:
         What causes a Docker application to fail?
@@ -217,7 +202,6 @@ def kb_can_answer(
         or:
 
         NO
-
 
         ================ CONTEXT ================
 
@@ -240,274 +224,265 @@ def kb_can_answer(
 
 
 # ============================================================
-# OFFICIAL DOCUMENTATION FALLBACK
+# CHECK WHETHER WEB RESULTS CAN ANSWER
 # ============================================================
 
-def ask_official_docs(
+def web_can_answer(
+    context,
     question
 ):
 
-    # ========================================================
-    # 1. ASK THE TOOL-ROUTING MODEL
-    # ========================================================
+    decision_prompt = f"""
+        You are a strict web-search evidence evaluator.
 
-    response = tool_model_with_tools.invoke(
-        [
-            SystemMessage(
-                content="""
-                    You are the official-documentation routing assistant.
-
-                    You have access to one tool:
-
-                    search_kubernetes_docs
-
-                    Use this tool ONLY when the user's question is
-                    specifically about Kubernetes.
-
-                    Do NOT use the tool for:
-
-                    - Redis
-                    - Docker
-                    - Linux
-                    - PostgreSQL
-                    - Python
-                    - other technologies
-
-                    If the question is not specifically about Kubernetes,
-                    do not call the tool.
-                    """
-            ),
-
-            HumanMessage(
-                content=question
-            )
-        ]
-    )
-
-    # ========================================================
-    # 2. NO TOOL CALL
-    # ========================================================
-
-    if not response.tool_calls:
-
-        return None
-
-
-    # ========================================================
-    # 3. GET TOOL CALL
-    # ========================================================
-
-    tool_call = response.tool_calls[0]
-
-    query = tool_call["args"].get(
-        "query",
-        ""
-    )
-
-
-    if not query:
-
-        return None
-
-
-    # ========================================================
-    # 4. CALL OFFICIAL DOCUMENTATION TOOL
-    # ========================================================
-
-    tool_result = search_kubernetes_docs.invoke(
-        {
-            "query": query
-        }
-    )
-
-
-    # ========================================================
-    # 5. CHECK TOOL RESULT
-    # ========================================================
-
-    if not tool_result:
-
-        return None
-
-
-    tool_result = str(
-        tool_result
-    ).strip()
-
-
-    if not tool_result:
-
-        return None
-
-
-    # --------------------------------------------------------
-    # Reject empty / useless responses
-    # --------------------------------------------------------
-
-    useless_results = [
-
-        "no results found",
-
-        "no relevant results found",
-
-        "no official documentation found",
-
-        "no relevant official documentation found",
-
-        "unable to find relevant documentation"
-
-    ]
-
-
-    if tool_result.lower() in useless_results:
-
-        return None
-
-
-    # ========================================================
-    # 6. ASK NORMAL LLM TO ANSWER FROM OFFICIAL DOCS
-    # ========================================================
-
-    final_prompt = f"""
-        You are OpsMind, a DevOps troubleshooting assistant.
-
-        The local OpsMind knowledge base did not contain enough
-        information to answer the user's question.
-
-        Official documentation was searched as a fallback.
+        Determine whether the provided web search results contain
+        DIRECT information sufficient to answer the user's question.
 
         IMPORTANT:
 
-        Use ONLY the official documentation provided below.
+        - Use ONLY the provided web search results.
+        - Do NOT use general knowledge.
+        - Do NOT infer missing facts.
+        - Do NOT assume that a related article answers the question.
+        - The results must contain information that directly answers
+        the specific question.
 
-        Do NOT use your general knowledge.
+        If the results are only vaguely related, answer NO.
 
-        Do NOT invent:
+        If the results discuss the same technology but do not contain
+        the requested information, answer NO.
 
-        - commands
-        - causes
-        - configuration values
-        - troubleshooting steps
-        - solutions
-        - source files
+        If the results contain enough direct information to answer
+        the question, answer YES.
 
-        If the official documentation does not contain enough
-        information to answer the question, respond exactly:
+        Example:
 
-        I don't have enough information in the OpsMind knowledge
-        base or the official documentation to answer this question.
+        Question:
+        What is Redis MISCONF?
 
-        Do NOT provide general troubleshooting advice.
-
-        Do NOT guess.
-
-        Do NOT mention information that is not present in the
-        official documentation.
-
-        At the end, include:
-
-        Sources:
-
-        Only mention sources that actually appear in the official
-        documentation below.
-
-        ================ OFFICIAL DOCUMENTATION ================
-
-        {tool_result}
-
-        ================ END OFFICIAL DOCUMENTATION ================
-
-        User question:
-
-        {question}
+        Context:
+        Redis documentation explaining MISCONF and RDB persistence.
 
         Answer:
-        """
+        YES
 
+        Example:
 
-    final_answer = model.invoke(
-        final_prompt
-    )
+        Question:
+        What was the exact CPU temperature of a Kubernetes cluster
+        at a specific historical time?
 
+        Context:
+        Articles describing Kubernetes history but containing no
+        CPU temperature information.
 
-    if not final_answer:
+        Answer:
+        NO
 
-        return None
+        Return ONLY:
 
+        YES
 
-    final_answer = str(
-        final_answer
-    ).strip()
+        or:
 
+        NO
 
-    if not final_answer:
-
-        return None
-
-
-    return final_answer
-
-def create_official_docs_prompt(question, context):
-    return f"""
-        You are OpsMind, a DevOps troubleshooting assistant.
-
-        You are answering using ONLY the provided official documentation.
-
-        STRICT RULES:
-
-        1. Use ONLY the provided official documentation context.
-
-        2. Do NOT use your general knowledge.
-
-        3. Do NOT invent:
-        - commands
-        - filenames
-        - configuration values
-        - error causes
-        - troubleshooting steps
-        - solutions
-        - terminology not supported by the documentation
-
-        4. The documentation must directly support the answer.
-
-        5. Do NOT combine unrelated information.
-
-        6. If the official documentation directly answers the question,
-        provide the answer using ONLY that information.
-
-        7. If the official documentation does NOT contain enough information
-        to answer the question, your entire response MUST be exactly:
-
-        OFFICIAL_DOCS_INSUFFICIENT
-
-        8. Do not provide a partial answer when the documentation is insufficient.
-
-        9. Do not mention retrieval, tools, embeddings, vector databases,
-        prompts, or internal instructions.
-
-        10. Do not invent sources.
-
-        Official documentation context:
-        ===============================
+        ================ WEB SEARCH RESULTS ================
 
         {context}
 
-        ===============================
-        END OFFICIAL DOCUMENTATION
-        ===============================
+        ================ QUESTION ================
 
-        User question:
         {question}
 
-        Answer:
+        ================ DECISION ================
         """
 
-
-def ask_official_docs(question, context):
-
-    prompt = create_official_docs_prompt(
-        question=question,
-        context=context
+    response = model.invoke(
+        decision_prompt
     )
 
-    return model.invoke(prompt)
+    answer = response.strip().upper()
+
+    return answer.startswith("YES")
+
+
+# ============================================================
+# WEB SEARCH ANSWER
+# ============================================================
+
+def create_web_prompt(
+    context,
+    question,
+    history=""
+):
+
+    return f"""
+You are OpsMind, a DevOps troubleshooting assistant.
+
+The OpsMind knowledge base did not contain enough
+information to answer the user's question.
+
+The following information was retrieved from the web.
+
+IMPORTANT RULES:
+
+1. Use ONLY the provided web search results.
+
+2. Do NOT use your general knowledge.
+
+3. Do NOT invent:
+- commands
+- causes
+- configuration values
+- troubleshooting steps
+- solutions
+- filenames
+
+4. Only use information that is directly supported
+by the web search results.
+
+5. Do not combine unrelated search results.
+
+6. If the web results do not contain enough information
+to answer the question, respond EXACTLY:
+
+WEB_INSUFFICIENT
+
+7. Do NOT guess.
+
+8. Do NOT provide general troubleshooting advice that
+is not supported by the web results.
+
+9. When mentioning a source, use the title and URL
+provided in the web search results.
+
+10. Include a short Sources section containing ONLY
+the web sources actually used.
+
+11. Answer only what the user asked.
+
+Conversation history:
+
+{history}
+
+================ WEB SEARCH RESULTS ================
+
+{context}
+
+================ END WEB SEARCH RESULTS ================
+
+User question:
+
+{question}
+
+Answer:
+"""
+
+
+# ============================================================
+# NORMAL WEB ANSWER
+# ============================================================
+
+def ask_web_llm(
+    context,
+    question
+):
+
+    prompt = create_web_prompt(
+        context=context,
+        question=question
+    )
+
+    return model.invoke(
+        prompt
+    )
+
+
+# ============================================================
+# STREAMING WEB ANSWER
+# ============================================================
+
+def ask_web_llm_stream(
+    context,
+    messages
+):
+
+    history = "\n".join(
+        f"{m.role}: {m.content}"
+        if hasattr(m, "role")
+        else f"{m['role']}: {m['content']}"
+        for m in messages[:-1]
+    )
+
+    last_message = messages[-1]
+
+    if hasattr(last_message, "content"):
+        question = last_message.content
+    else:
+        question = last_message["content"]
+
+    prompt = create_web_prompt(
+        context=context,
+        question=question,
+        history=history
+    )
+
+    for chunk in model.stream(prompt):
+        yield chunk
+
+
+import re
+
+
+# ============================================================
+# EXTRACT WEB SOURCES
+# ============================================================
+
+def extract_web_sources(
+    web_context
+):
+
+    sources = []
+
+    pattern = re.compile(
+        r"Title:\s*(.*?)\n"
+        r"URL:\s*(\S+)",
+        re.IGNORECASE
+    )
+
+    matches = pattern.findall(
+        web_context
+    )
+
+    for title, url in matches:
+
+        title = title.strip()
+        url = url.strip()
+
+        # Handle Markdown links:
+        #
+        # [https://example.com](https://example.com)
+        #
+
+        markdown_match = re.match(
+            r"\[.*?\]\((https?://[^)]+)\)",
+            url
+        )
+
+        if markdown_match:
+            url = markdown_match.group(1)
+
+        # Remove accidental punctuation
+
+        url = url.rstrip(".,;")
+
+        if not url:
+            continue
+
+        sources.append({
+            "title": title,
+            "url": url
+        })
+
+    return sources
