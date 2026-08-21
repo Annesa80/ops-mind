@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { askOpsMind } from "./api/opsmind";
 
 import ChatInput from "./components/ChatInput";
 import ChatWindow from "./components/ChatWindow";
 import FileUpload from "./components/FileUpload";
+
+import { askOpsMind, resetConversationId } from "./api/opsmind";
 
 function App() {
 
@@ -23,8 +24,14 @@ function App() {
 
 
   function newChat() {
+
     setMessages([]);
-    localStorage.removeItem("opsmind-history");
+
+    localStorage.removeItem(
+      "opsmind-history"
+    );
+
+    resetConversationId();
   }
 
 
@@ -40,7 +47,6 @@ function App() {
       }
     ];
 
-
     setMessages(prev => [
       ...prev,
       {
@@ -49,32 +55,58 @@ function App() {
       },
       {
         role: "assistant",
-        content: ""
+        content: "",
+        sources: []
       }
     ]);
-
 
     try {
 
       await askOpsMind(
-        history,
-        (chunk) => {
+        question,
+        (event) => {
 
-          setMessages(prev => {
+          if (event.type === "token") {
 
-            const updated = [...prev];
+            setMessages(prev => {
 
-            const lastIndex = updated.length - 1;
+              const updated = [...prev];
 
-            updated[lastIndex] = {
-              ...updated[lastIndex],
-              content:
-                updated[lastIndex].content + chunk
-            };
+              const lastIndex =
+                updated.length - 1;
 
-            return updated;
+              updated[lastIndex] = {
+                ...updated[lastIndex],
+                content:
+                  updated[lastIndex].content +
+                  event.content
+              };
 
-          });
+              return updated;
+
+            });
+
+          }
+
+          if (event.type === "sources") {
+
+            setMessages(prev => {
+
+              const updated = [...prev];
+
+              const lastIndex =
+                updated.length - 1;
+
+              updated[lastIndex] = {
+                ...updated[lastIndex],
+                sources: event.sources
+              };
+
+              return updated;
+
+            });
+
+          }
 
         }
       );
@@ -87,22 +119,24 @@ function App() {
 
         const updated = [...prev];
 
-        if (updated.length > 0) {
+        const lastIndex =
+          updated.length - 1;
 
-          updated[updated.length - 1] = {
-            ...updated[updated.length - 1],
-            content: "Something went wrong. Please try again."
-          };
-
-        }
+        updated[lastIndex] = {
+          ...updated[lastIndex],
+          content:
+            "Something went wrong. Please try again."
+        };
 
         return updated;
 
       });
 
-    }
+    } finally {
 
-    setLoading(false);
+      setLoading(false);
+
+    }
   }
 
   return (

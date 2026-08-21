@@ -1,19 +1,33 @@
 import os
 import shutil
 import uuid
+import json
 
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-
 from pydantic import BaseModel
 
-from backend.query import ask_opsmind_stream
 from backend.ingest import ingest_file
+
+from backend.graph import graph
+
+from dotenv import load_dotenv
+
+load_dotenv(
+    "C:/Users/Annesa/Desktop/OpsMind/.env",
+    override=True,
+)
+
+import os
 
 
 app = FastAPI()
 
+
+# ============================================================
+# CORS
+# ============================================================
 
 app.add_middleware(
     CORSMiddleware,
@@ -26,46 +40,77 @@ app.add_middleware(
 )
 
 
+# ============================================================
+# UPLOADS
+# ============================================================
+
 UPLOAD_DIR = "uploads"
 
 os.makedirs(
     UPLOAD_DIR,
-    exist_ok=True
+    exist_ok=True,
 )
 
 
-# =====================
-# Chat Models
-# =====================
+# ============================================================
+# CHAT MODELS
+# ============================================================
 
-class Message(BaseModel):
-    role: str
-    content: str
-
-
-class Question(BaseModel):
-    messages: list[Message]
+class ChatRequest(BaseModel):
+    conversation_id: str
+    question: str
 
 
-# =====================
-# Routes
-# =====================
+# ============================================================
+# ROUTES
+# ============================================================
 
 @app.get("/")
 def home():
+
     return {
         "message": "Welcome to OpsMind API"
     }
 
 
+# ============================================================
+# CHAT
+# ============================================================
+
 @app.post("/chat")
-def chat(request: Question):
+def chat(request: ChatRequest):
+
+    config = {
+        "configurable": {
+            "thread_id": request.conversation_id
+        }
+    }
+
+    def generate():
+
+        for event in graph.stream(
+            {
+                "question": request.question,
+            },
+            config=config,
+            stream_mode="custom",
+        ):
+
+            yield json.dumps(event) + "\n"
+
+        yield json.dumps({
+            "type": "done"
+        }) + "\n"
 
     return StreamingResponse(
-        ask_opsmind_stream(request.messages),
-        media_type="text/event-stream"
+        generate(),
+        media_type="application/x-ndjson",
     )
 
+
+# ============================================================
+# FILE UPLOAD
+# ============================================================
 
 @app.post("/upload")
 async def upload_file(
@@ -80,37 +125,40 @@ async def upload_file(
 
     filepath = os.path.join(
         UPLOAD_DIR,
-        filename
+        filename,
     )
 
-
+    # --------------------------------------------------------
     # Save uploaded file
+    # --------------------------------------------------------
+
     with open(filepath, "wb") as buffer:
+
         shutil.copyfileobj(
             file.file,
-            buffer
+            buffer,
         )
-
 
     try:
 
-        chunks = ingest_file(filepath)
+        chunks = ingest_file(
+            filepath
+        )
 
         return {
             "message": "File uploaded successfully",
             "filename": file.filename,
-            "chunks_added": chunks
+            "chunks_added": chunks,
         }
-
 
     except Exception as e:
 
         return {
-            "error": str(e)
+            "error": str(e),
         }
-
 
     finally:
 
         if os.path.exists(filepath):
+
             os.remove(filepath)

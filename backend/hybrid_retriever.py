@@ -122,28 +122,14 @@ def hybrid_search(
     query,
     dense_k=10,
     bm25_k=10,
-    final_k=10
+    final_k=20
 ):
 
     # ----------------------------------------
     # Dense retrieval
     # ----------------------------------------
 
-    dense_results = retriever.invoke(
-        query
-    )[:dense_k]
-
-
-    # ----------------------------------------
-    # Limit dense results
-    #
-    # retriever itself is configured for
-    # k=10, so dense_k is applied here too.
-    # ----------------------------------------
-
-    # dense_results = dense_results[
-    #     :dense_k
-    # ]
+    dense_results = retriever.invoke(query)[:dense_k]
 
 
     # ----------------------------------------
@@ -165,6 +151,4 @@ def hybrid_search(
         bm25_results
     )
 
-
-    # Keep more candidates for BGE
     return results[:final_k]
