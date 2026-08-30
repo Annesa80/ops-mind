@@ -118,11 +118,11 @@ def understand_conversation(state: OpsMindState):
         question=state["question"],
     )
 
-    print("\n================ OPSMIND QUERY =================")
-    print("Original:", state["question"])
-    print("Related:", result["related"])
-    print("Retrieval:", result["query"])
-    print("=================================================\n")
+    # print("\n================ OPSMIND QUERY =================")
+    # print("Original:", state["question"])
+    # print("Related:", result["related"])
+    # print("Retrieval:", result["query"])
+    # print("=================================================\n")
 
     return {
         "retrieval_query": result["query"],
@@ -203,6 +203,23 @@ def rerank_kb(state: OpsMindState):
 # NODE 4 — CHECK RETRIEVAL QUALITY
 # ============================================================
 
+# def check_retrieval_quality(state: OpsMindState):
+
+#     documents = state["reranked_documents"]
+
+#     if not documents:
+#         return {
+#             "retrieval_good": False
+#         }
+
+#     best_score = documents[0]["rerank_score"]
+
+#     return {
+#         "retrieval_good": (
+#             best_score >= RERANK_THRESHOLD
+#         )
+#     }
+
 def check_retrieval_quality(state: OpsMindState):
 
     documents = state["reranked_documents"]
@@ -212,13 +229,26 @@ def check_retrieval_quality(state: OpsMindState):
             "retrieval_good": False
         }
 
+    print("\n=== RETRIEVAL SCORES ===")
+
+    for i, doc in enumerate(documents, start=1):
+        print(
+            f"{i}. "
+            f"{doc['metadata'].get('source')} "
+            f"-> {doc.get('rerank_score')}"
+        )
+
     best_score = documents[0]["rerank_score"]
+
+    print(f"Best score: {best_score}")
+    print("========================\n")
 
     return {
         "retrieval_good": (
             best_score >= RERANK_THRESHOLD
         )
     }
+
 
 
 # ============================================================

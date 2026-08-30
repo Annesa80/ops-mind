@@ -372,10 +372,10 @@ DECISION
 
     answer = str(response).strip().upper()
 
-    print(
-        "KB ANSWERABILITY:",
-        answer,
-    )
+    # print(
+    #     "KB ANSWERABILITY:",
+    #     answer,
+    # )
 
     return "YES" in answer
 
@@ -417,7 +417,7 @@ Answer:
 
     answer = str(response).strip().upper()
 
-    print("WEB ANSWERABILITY RAW:", repr(answer))
+    # print("WEB ANSWERABILITY RAW:", repr(answer))
 
     if answer == "YES":
         print("WEB ANSWERABILITY: YES")
@@ -427,7 +427,7 @@ Answer:
         print("WEB ANSWERABILITY: NO")
         return False
 
-    print("WEB ANSWERABILITY: INVALID OUTPUT -> NO")
+    # print("WEB ANSWERABILITY: INVALID OUTPUT -> NO")
     return False
 
 
@@ -892,13 +892,13 @@ def _parse_understand_query_response(
     # Safe fallback
     # --------------------------------------------------------
 
-    print(
-        "WARNING: understand_query returned invalid JSON."
-    )
+    # print(
+    #     "WARNING: understand_query returned invalid JSON."
+    # )
 
-    print(
-        "Using original question as retrieval query."
-    )
+    # print(
+    #     "Using original question as retrieval query."
+    # )
 
     return {
         "related": False,

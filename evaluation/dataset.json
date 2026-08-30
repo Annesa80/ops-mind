@@ -1,0 +1,163 @@
+[
+  {
+    "question": "What should I check first when a Docker container keeps restarting?",
+    "expected_answer": "First check the container status and then inspect its logs using docker ps -a and docker logs <container_name>. The logs can reveal application crashes, configuration errors, database connection failures, or other startup problems.",
+    "relevant_sources": ["docker_container_restart.md"]
+  },
+  {
+    "question": "How can I check why a Docker container exited?",
+    "expected_answer": "Use docker ps -a to inspect the container and docker inspect <container_name> to check its exit code and configuration. Container logs can also reveal the cause of the failure.",
+    "relevant_sources": ["docker_container_restart.md"]
+  },
+  {
+    "question": "My Docker application needs PostgreSQL but cannot connect to it. What hostname should I use if PostgreSQL is running in another container?",
+    "expected_answer": "The application should normally use the PostgreSQL container or service name as the hostname rather than localhost. For example, DATABASE_HOST=postgres.",
+    "relevant_sources": [
+      "docker_networking.md",
+      "database_connection_troubleshooting.md"
+    ]
+  },
+  {
+    "question": "What is the difference between a Docker host port and container port?",
+    "expected_answer": "The host port is the port exposed on the host machine, while the container port is where the application listens inside the container. For example, -p 8080:3000 maps host port 8080 to container port 3000.",
+    "relevant_sources": [
+      "docker_networking.md",
+      "docker_container_restart.md"
+    ]
+  },
+  {
+    "question": "Which command can I use to inspect Docker networks?",
+    "expected_answer": "Use docker network ls to list Docker networks and docker network inspect <network_name> to inspect a specific network.",
+    "relevant_sources": ["docker_networking.md"]
+  },
+  {
+    "question": "Why might docker build fail when a file referenced by COPY cannot be found?",
+    "expected_answer": "The file may not exist inside the Docker build context. For example, if requirements.txt is outside the build context, Docker cannot copy it into the image.",
+    "relevant_sources": ["docker_image_build.md"]
+  },
+  {
+    "question": "My Docker image fails during pip install. What should I investigate?",
+    "expected_answer": "Check the package versions, whether the required package exists, whether the base image contains the required runtime, and the build output for the exact failing step.",
+    "relevant_sources": ["docker_image_build.md"]
+  },
+  {
+    "question": "What does CrashLoopBackOff mean in Kubernetes?",
+    "expected_answer": "CrashLoopBackOff means Kubernetes is repeatedly restarting a container that has failed. It indicates repeated container failure but does not identify the root cause by itself.",
+    "relevant_sources": ["kubernetes_crashloopbackoff.md"]
+  },
+  {
+    "question": "A Kubernetes pod is in CrashLoopBackOff. Which logs should I check if the container has already restarted?",
+    "expected_answer": "Use kubectl logs <pod_name> --previous to inspect logs from the previous container instance.",
+    "relevant_sources": ["kubernetes_crashloopbackoff.md"]
+  },
+  {
+    "question": "What command should I use to investigate why a Kubernetes pod is stuck in Pending?",
+    "expected_answer": "Use kubectl describe pod <pod_name> and inspect the Events section, which often explains why the scheduler could not place the pod.",
+    "relevant_sources": ["kubernetes_pending_pod.md"]
+  },
+  {
+    "question": "What are common reasons for a Kubernetes pod remaining in Pending?",
+    "expected_answer": "Common causes include insufficient CPU or memory, node selector problems, taints without matching tolerations, and PersistentVolumeClaim binding problems.",
+    "relevant_sources": ["kubernetes_pending_pod.md"]
+  },
+  {
+    "question": "A Kubernetes Service exists but traffic cannot reach the application. What should I check?",
+    "expected_answer": "Check the Service selector, endpoints, pod labels, targetPort, and whether the application is listening on the expected port. kubectl describe service and kubectl get endpoints are useful commands.",
+    "relevant_sources": ["kubernetes_service_networking.md"]
+  },
+  {
+    "question": "Why would a Kubernetes Service have no endpoints?",
+    "expected_answer": "The Service selector may not match the labels on any running pods. Check the Service selector and pod labels.",
+    "relevant_sources": ["kubernetes_service_networking.md"]
+  },
+  {
+    "question": "What is the difference between port and targetPort in a Kubernetes Service?",
+    "expected_answer": "The Service port is the port clients connect to, while targetPort is the port on the target pod where the application is listening.",
+    "relevant_sources": ["kubernetes_service_networking.md"]
+  },
+  {
+    "question": "What does ImagePullBackOff mean in Kubernetes?",
+    "expected_answer": "ImagePullBackOff means Kubernetes cannot obtain the container image and is backing off before trying again. Common causes include an incorrect image name or tag, registry authentication problems, or registry connectivity issues.",
+    "relevant_sources": ["kubernetes_imagepullbackoff.md"]
+  },
+  {
+    "question": "A Kubernetes deployment references an image tag that does not exist. What will happen?",
+    "expected_answer": "Kubernetes will fail to pull the image and the pod may enter ImagePullBackOff or ErrImagePull.",
+    "relevant_sources": ["kubernetes_imagepullbackoff.md"]
+  },
+  {
+    "question": "How do I investigate a Linux Permission denied error?",
+    "expected_answer": "Check file permissions and ownership using ls -l. Also check the permissions of parent directories and determine which user the process is running as.",
+    "relevant_sources": ["linux_permissions.md"]
+  },
+  {
+    "question": "What command can I use to change the owner of a Linux file?",
+    "expected_answer": "Use chown user:group filename to change the owner and group of a file.",
+    "relevant_sources": ["linux_permissions.md"]
+  },
+  {
+    "question": "Why can a user have permission to read a file but still be unable to access it?",
+    "expected_answer": "The user may lack execute permission on one of the parent directories. Directory permissions must also allow the user to access the file.",
+    "relevant_sources": ["linux_permissions.md"]
+  },
+  {
+    "question": "How can I check whether a Linux filesystem is full?",
+    "expected_answer": "Run df -h to check filesystem capacity and usage.",
+    "relevant_sources": ["linux_disk_space.md"]
+  },
+  {
+    "question": "A Linux server is running out of disk space. What should I investigate?",
+    "expected_answer": "First use df -h to identify the full filesystem, then use du -sh to identify large directories and files. Investigate logs, temporary files, package caches, and application data before deleting anything.",
+    "relevant_sources": ["linux_disk_space.md"]
+  },
+  {
+    "question": "Should I immediately delete the largest files when a Linux disk is full?",
+    "expected_answer": "No. First determine what the files are used for. Deleting active database files or important application data can cause data loss.",
+    "relevant_sources": ["linux_disk_space.md"]
+  },
+  {
+    "question": "How can I find which Linux process is consuming excessive CPU?",
+    "expected_answer": "Use top or htop to identify processes consuming unusually high CPU, then investigate the process and its logs.",
+    "relevant_sources": ["linux_cpu_memory.md"]
+  },
+  {
+    "question": "How can I investigate high memory usage on Linux?",
+    "expected_answer": "Use free -h and top or htop to identify memory usage and determine which processes are consuming the most memory.",
+    "relevant_sources": ["linux_cpu_memory.md"]
+  },
+  {
+    "question": "What should I do first during a production incident?",
+    "expected_answer": "First understand the problem by determining what is failing, which users are affected, when the problem started, and whether the issue is intermittent or continuous.",
+    "relevant_sources": ["incident_response.md"]
+  },
+  {
+    "question": "Should I immediately deploy a fix when a production incident occurs?",
+    "expected_answer": "Not necessarily. First collect basic evidence such as logs, metrics, deployment history, error messages, and timestamps unless immediate mitigation is required.",
+    "relevant_sources": ["incident_response.md"]
+  },
+  {
+    "question": "What should I verify after applying a production incident mitigation?",
+    "expected_answer": "Confirm service health, check application logs, verify error rates, confirm affected functionality works, and continue monitoring for recurrence.",
+    "relevant_sources": ["incident_response.md"]
+  },
+  {
+    "question": "My application cannot connect to PostgreSQL. What should I check?",
+    "expected_answer": "Check database availability, hostname and port, network connectivity, credentials, connection limits, and application logs.",
+    "relevant_sources": [
+      "database_connection_troubleshooting.md"
+    ]
+  },
+  {
+    "question": "My application in Docker cannot connect to PostgreSQL running in another container. What are the likely causes?",
+    "expected_answer": "Check that both containers are running and connected to the same Docker network, verify that the application uses the PostgreSQL container or service name rather than localhost, and verify the internal database port and credentials.",
+    "relevant_sources": [
+      "docker_networking.md",
+      "database_connection_troubleshooting.md"
+    ]
+  },
+  {
+    "question": "How do I configure PostgreSQL streaming replication?",
+    "expected_answer": "The OpsMind knowledge base does not contain information about PostgreSQL streaming replication, so there is not enough information to provide a reliable answer.",
+    "relevant_sources": []
+  }
+]
